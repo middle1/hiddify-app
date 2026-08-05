@@ -78,10 +78,11 @@ jobs:
             aarch: amd64
             targets: exe,zip
 
-          - platform: linux
+          - platform: linux-debug
             os: ubuntu-22.04
             aarch: amd64
-            targets: deb,gz,AppImage
+            targets: debug
+
           - platform: windows-debug
             os: windows-latest
             aarch: amd64
@@ -255,7 +256,13 @@ jobs:
         env:
           SENTRY_DSN: ${{ secrets.SENTRY_DSN }}
         run: |
-          make ${{ matrix.platform }}-release
+          if [ "${{ matrix.platform }}" == "linux-debug" ]; then
+            echo "Building Linux Debug..."
+            make linux-prepare
+            flutter build linux --debug --target=lib/main.dart --dart-define=sentry_dsn=$SENTRY_DSN
+          else
+            make ${{ matrix.platform }}-release
+          fi
 
       - name: Code Sign
         if: ${{ inputs.upload-artifact && startsWith(matrix.platform,'windows') }}
@@ -322,7 +329,7 @@ jobs:
           cp ./build/app/outputs/bundle/release/app-release.aab out/hiddify-android-market.aab || echo "no aab"
 
       - name: Copy to out unix
-        if: startsWith(matrix.platform,'linux') || matrix.platform == 'macos' || matrix.platform == 'ios'
+        if: (startsWith(matrix.platform,'linux') || matrix.platform == 'macos' || matrix.platform == 'ios') && matrix.platform != 'linux-debug'
         run: |
           ls -R dist/
           mkdir out
@@ -352,6 +359,12 @@ jobs:
               cd ..
             fi
           done
+      - name: Prepare Linux Debug Artifact
+        if: matrix.platform == 'linux-debug'
+        run: |
+          mkdir -p out
+          # Пакуем сырую папку с дебаг-сборкой в архив
+          tar -czf out/Hiddify-Linux-Debug.tar.gz -C build/linux/x64/debug bundle
 
       - name: Upload Artifact
         if: env.UPLOAD_ARTIFACT == 'true'
