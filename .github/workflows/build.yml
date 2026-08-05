@@ -22,7 +22,6 @@ env:
   TARGET_NAME_gz: "Hiddify-Linux-x64-AppImage.tar"
   TARGET_NAME_AppImage: "Hiddify-Linux-x64-AppImage"
   TARGET_NAME_deb: "Hiddify-Debian-x64"
-  # TARGET_NAME_rpm: "Hiddify-rpm-x64"
   TARGET_NAME_apk: "Hiddify-Android"
   TARGET_NAME_aab: "Hiddify-Android"
   TARGET_NAME_exe: "Hiddify-Windows-Setup-x64"
@@ -31,7 +30,6 @@ env:
   TARGET_NAME_dmg: "Hiddify-MacOS"
   TARGET_NAME_pkg: "Hiddify-MacOS-Installer"
   TARGET_NAME_ipa: "Hiddify-iOS"
-  
 
 jobs:
   test:
@@ -40,12 +38,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: subosito/flutter-action@v2.21.0 #issue with 2.13
+      - uses: subosito/flutter-action@v2.21.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
           channel: 'stable'
           cache: true
-          
+
       - name: Prepare
         run: make linux-amd64-prepare
       - name: Test
@@ -54,7 +52,6 @@ jobs:
       - name: make draftBuildCode
         id: draftBuildCode
         run: echo "::set-output name=datetime::$(date +'%d.%H.%M')"
-
 
   build:
     needs: test
@@ -88,36 +85,12 @@ jobs:
             aarch: amd64
             build-type: debug
             targets: debug
-          # - platform: linux-amd64
-          #   os: ubuntu-22.04
-          #   aarch: amd64
-          #   targets: deb,gz
 
-          # - platform: linux-arm64
-          #   os: ubuntu-24.04-arm
-          #   aarch: arm64
-          #   targets: deb,gz
-
-          # - platform: linux-amd64-musl
-          #   os: ubuntu-22.04
-          #   aarch: amd64
-          #   targets: deb,gz
-
-          # - platform: linux-arm64-musl
-          #   os: ubuntu-24.04-arm
-          #   aarch: arm64
-          #   targets: deb,gz
-            
           - platform: macos
             os: macos-15
             aarch: universal
             targets: dmg,pkg
-            
-          # - platform: ios
-          #   os: macos-15
-          #   aarch: universal
-          #   filename: hiddify-ios
-          #   targets: ipa
+
     runs-on: ${{ matrix.os }}
     steps:
       - name: checkout
@@ -126,7 +99,7 @@ jobs:
       - name: Import Apple Codesign Certificates
         if: ${{ inputs.upload-artifact && startsWith(matrix.os,'macos') }}
         uses: apple-actions/import-codesign-certs@v6
-        with: 
+        with:
             p12-file-base64: "${{ secrets.APPLE_CERTIFICATE_P12 }}"
             p12-password: "${{ secrets.APPLE_CERTIFICATE_P12_PASSWORD }}"
 
@@ -138,24 +111,11 @@ jobs:
            ls ~/Library/MobileDevice/Provisioning\ Profiles
            security unlock-keychain -p "" signing_temp.keychain
            security find-identity -v -p codesigning
-        #   ls ~/Library/MobileDevice/Provisioning\ Profiles
-        #   echo "${{secrets.NEW_APPLE_MOBILE_PROVISIONING_PROFILES_TARXZ_BASE64}}"|base64 --decode | tar xJ -C ~/Library/MobileDevice/Provisioning\ Profiles
-        #   # echo "${{secrets.NEW_APPLE_MOBILE_PROVISIONING_PROFILES_TARGZ_BASE64_2}}"|base64 --decode | tar xz -C ~/Library/MobileDevice/Provisioning\ Profiles
-          
-
-
-      # - name: Setup Flutter for arm64
-      #   if: ${{ startsWith(matrix.platform,'linux-arm64') }}
-      #   uses: hurelhuyag/flutter-arm64-action@HEAD
-      #   with:
-      #     channel: 'stable'
-      #     flutter-version: ${{ env.FLUTTER_VERSION }}
 
       - name: Setup Flutter
-        uses: subosito/flutter-action@v2.21.0 #issue with 2.13
+        uses: subosito/flutter-action@v2.21.0
         with:
           flutter-version: ${{ env.FLUTTER_VERSION }}
-          # flutter-version-file: pubspec.yaml
           channel: 'stable'
           cache: true
 
@@ -173,41 +133,24 @@ jobs:
           df -h
           sudo apt-get autoremove -y
           df -h
-          sudo apt-get clean 
+          sudo apt-get clean
           df -h
           tree
-      
+
       - name: Setup Java
         if: startsWith(matrix.platform,'android')
         uses: actions/setup-java@v5
         with:
           distribution: 'zulu'
           java-version: 17
-      # - name: Setup NDK
-      #   if: startsWith(matrix.platform,'android')
-      #   uses: nttld/setup-ndk@v1
-      #   id: setup-ndk
-      #   with:
-      #     ndk-version: ${{ env.NDK_VERSION }}
-      #     add-to-path: true
-      #     link-to-sdk: true
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
         if: startsWith(matrix.platform,'android')
-      # - name: Cache Android SDK
-      #   uses: actions/cache@v5
-      #   if: startsWith(matrix.platform,'android')
-      #   with:
-      #     path: |
-      #       /usr/local/lib/android/sdk
-      #     key: android-sdk-${{ runner.os }}-${{ env.NDK_VERSION }}
-      #     restore-keys: |
-      #       android-sdk-${{ runner.os }}-      
+
       - name: Cache Gradle
         uses: actions/cache@v5
         if: startsWith(matrix.platform,'android')
-
         with:
           path: |
             ~/.gradle/caches
@@ -215,9 +158,9 @@ jobs:
           key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             gradle-${{ runner.os }}-
-                  
+
       - name: Setup dependencies
-          run: |
+        run: |
           if [ "${{ matrix.platform }}" == "linux-debug" ]; then
             make linux-install-deps
           else
@@ -239,17 +182,6 @@ jobs:
         run: |
             [IO.File]::WriteAllBytes("windows\sign.pfx", [Convert]::FromBase64String("${{ secrets.WINDOWS_SIGNING_KEY }}"))
             (Get-Content "windows\packaging\msix\make_config.yaml") -replace '^certificate_password:.*$', 'certificate_password: ${{ secrets.WINDOWS_SIGNING_PASSWORD }}' | Set-Content "windows\packaging\msix\make_config.yaml"
-        
-      # - name: Temporary disable Permission Handler for windows due to its issue in permission
-      #   if: ${{ startsWith(matrix.platform,'windows') }}
-      #   run: |
-      #     (Get-Content -Path "pubspec.yaml") -notmatch "permission_handler" | Set-Content -Path "pubspec.yaml"
-      #     (Get-Content -Path "lib\features\profile\add\add_profile_modal.dart") -notmatch "qr_code_scanner_screen" | Set-Content -Path "lib\features\profile\add\add_profile_modal.dart"
-      #     (Get-Content -Path lib\features\profile\add\add_profile_modal.dart) -replace 'await QRCodeScannerScreen\(\).open\(context\);', 'null;' | Set-Content -Path lib\features\profile\add\add_profile_modal.dart
-      #     Remove-Item -Path "lib\features\common\qr_code_scanner_screen.dart"
-
-
-
 
       - name: Prepare for ${{ matrix.platform }}
         run: |
@@ -265,7 +197,6 @@ jobs:
         run: |
           if [ "${{ matrix.platform }}" == "linux-debug" ]; then
             echo "Building Linux Debug..."
-            make linux-prepare
             flutter build linux --debug --target=lib/main.dart --dart-define=sentry_dsn=$SENTRY_DSN
           else
             make ${{ matrix.platform }}-release
@@ -294,16 +225,14 @@ jobs:
             $ext = $ext.Trim()
             $key = "TARGET_NAME_$ext"
             $targetName = (Get-Item "env:$key").Value
-            
             $files = Get-ChildItem -Path dist -Recurse -Filter "*.$ext"
-            
             foreach ($file in $files) {
                 $destination = Join-Path -Path "out" -ChildPath "$targetName.$ext"
                 Move-Item -Path $file.FullName -Destination $destination -Force
             }
           }
           Get-ChildItem -Path out
-          
+
       - name: Upload Debug Symbols
         if: ${{ inputs.upload-artifact && inputs.tag-name != 'draft' }}
         env:
@@ -313,11 +242,8 @@ jobs:
           SENTRY_DIST: ${{ matrix.platform == 'android-aab' && 'google-play' || 'general' }}
         run: |
           dart pub global activate sentry_dart_plugin
-          dart run sentry_dart_plugin 
-      
-      
+          dart run sentry_dart_plugin
 
-              
       - name: Copy to out Android APK
         if: matrix.platform == 'android-apk'
         run: |
@@ -341,7 +267,6 @@ jobs:
           ls -R dist/
           mkdir out
           mkdir tmp_out
-          
           for EXT in $(echo ${{ matrix.targets }} | tr ',' '\n'); do
             KEY=TARGET_NAME_${EXT}
             FILENAME=${!KEY}
@@ -359,18 +284,15 @@ jobs:
               mv tmp_out/${FILENAME}.$EXT out/
             else
               cd tmp_out
-              # 7z a ${FILENAME}.zip ./
-              # mv ${FILENAME}.zip ../out/
-              # [[ $EXT == 'AppImage' ]]&& mv ${FILENAME}.$EXT ../out/ # added for appimage link
               mv ${FILENAME}.$EXT ../out/
               cd ..
             fi
           done
+
       - name: Prepare Linux Debug Artifact
         if: matrix.platform == 'linux-debug'
         run: |
           mkdir -p out
-          # Пакуем сырую папку с дебаг-сборкой в архив
           tar -czf out/Hiddify-Linux-Debug.tar.gz -C build/linux/x64/debug bundle
 
       - name: Upload Artifact
@@ -386,6 +308,7 @@ jobs:
         run: |
           security delete-keychain $RUNNER_TEMP/app-signing.keychain-db ||echo ok
           rm ~/Library/MobileDevice/Provisioning\ Profiles/*.mobileprovision ||echo ok
+
   update-draft:
     permissions: write-all
     if: ${{ inputs.upload-artifact }}
@@ -395,8 +318,6 @@ jobs:
       - name: checkout
         uses: actions/checkout@v6
         with:
-          # by default, it uses a depth of 1
-          # this fetches all history so that we can read each commit
           fetch-depth: 0
       - name: Download Artifact
         uses: actions/download-artifact@v7
@@ -404,7 +325,6 @@ jobs:
           merge-multiple: true
           pattern: "*"
           path: ./out/
-          
 
       - name: Display Files Structure
         run: ls -R
@@ -416,17 +336,18 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: 'draft'
           deleteOnlyFromDrafts: false
-          
+
       - name: prepare_release_message
         continue-on-error: true
         run: |
-          set +e 
+          set +e
           sed 's|RELEASE_TAG|${{ env.TAG_NAME }}|g' ./.github/release_message.md > release.md
           pip install gitchangelog pystache mustache markdown
-          prelease=$(curl --silent "https://api.github.com/repos/hiddify/hiddify-app/releases/latest" | grep -Po '"tag_name": "\K([^"]*)') 
+          prelease=$(curl --silent "https://api.github.com/repos/hiddify/hiddify-app/releases/latest" | grep -Po '"tag_name": "\K([^"]*)')
           echo -e "\n\n<details markdown=1><summary>All changes from $current to the latest commit:</summary>\n\n">>release.md
           gitchangelog "${prelease}.." >> release.md  2>&1 || echo "Error in gitchangelog"
           echo -e "\n\n</details>">>release.md
+          
       - name: Create or Update Draft Release
         uses: softprops/action-gh-release@v2
         env:
@@ -485,7 +406,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # prerelease: ${{ env.CHANNEL == 'dev' }}
           prerelease: true
           tag_name: ${{ env.TAG_NAME }}
           body_path: './release.md'
@@ -503,11 +423,9 @@ jobs:
           releaseFiles: ./hiddify-android-market.aab
           track: 'beta'
 
-
   upload-to-testflight:
     needs: [build]
     if: ${{ inputs.upload-artifact &&  inputs.tag-name != 'draft' }}
-    #if: ${{ inputs.upload-artifact }}
     runs-on: macOS-latest
     timeout-minutes: 30
     steps:
@@ -529,24 +447,22 @@ jobs:
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
+          
       - uses: Apple-Actions/download-provisioning-profiles@v1
         with:
           bundle-id: app.hiddify.com.SingBoxPacketTunnel
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
-  
-
 
       - name: Import Apple Mobile Provisioning Profile
         run: |
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
           echo "${{secrets.APPLE_DIST_PROVISIONING_PROFILES_TARGZ_BASE64}}"|base64 --decode | tar xz -C ~/Library/MobileDevice/Provisioning\ Profiles
-        #echo "${{secrets.NEW_APPLE_STORE_PROVISIONING_PROFILES_TARXZ_BASE64}}"|base64 --decode | tar xJ -C ~/Library/MobileDevice/Provisioning\ Profiles
 
       - uses: Apple-Actions/upload-testflight-build@v4
         with:
-          app-path: 'out/Hiddify-iOS.ipa' 
+          app-path: 'out/Hiddify-iOS.ipa'
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
           api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}
