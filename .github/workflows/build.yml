@@ -217,8 +217,12 @@ jobs:
             gradle-${{ runner.os }}-
                   
       - name: Setup dependencies
-        run: |
-          make ${{ matrix.platform }}-install-deps  
+          run: |
+          if [ "${{ matrix.platform }}" == "linux-debug" ]; then
+            make linux-install-deps
+          else
+            make ${{ matrix.platform }}-install-deps
+          fi
           echo "$HOME/.pub-cache/bin" >> $GITHUB_PATH
 
       - name: Setup Android Signing Properties
@@ -249,8 +253,11 @@ jobs:
 
       - name: Prepare for ${{ matrix.platform }}
         run: |
-          make ${{ matrix.platform }}-prepare
-
+          if [ "${{ matrix.platform }}" == "linux-debug" ]; then
+            make linux-prepare
+          else
+            make ${{ matrix.platform }}-prepare
+          fi
 
       - name: Build ${{ matrix.platform }}
         env:
